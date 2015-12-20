@@ -39,13 +39,9 @@ def check_signature():
 def lib():
     data=request.body.read()
     root=ET.fromstring(data)
-    mydict={child.tag:child.text for child in root}
-    d=mydict['Content']
+    recv_con={child.tag:child.text for child in root}
+    d=recv['Content']
     if d.startswith('d '):
-        connection=MySQLdb.connection(host=MYSQL_HOST_M, port=MYSQL_PORT, user=MYSQL_USER, passwd=MYSQL_PASS)
-        connection.select_db(MYSQL_DB)
-        sql_insert="""insert into MYSQL_diary(datetime, content) VALUES (CURRENT_TIMESTAMP,'"""+d[2:]+"""')"""
-        connection.query(sql_insert)
     elif d in ['l','list']:
         connection=MySQLdb.connection(host=MYSQL_HOST_M, port=MYSQL_PORT, user=MYSQL_USER, passwd=MYSQL_PASS)
         connection.select_db(MYSQL_DB)
@@ -62,27 +58,13 @@ def lib():
     <Content><![CDATA[{}]]></Content></xml>
     '''.format(mydict['FromUserName'],mydict['ToUserName'],data)
         return myxml
-    elif d in ['?', 'h', 'help']:
-        helpinfo='''usage:
-        d+space write and save
-        ?|h|help help info.
-        l|list reload all historic msg
-        '''
-        myxml = '''\
-    <xml>
-    <ToUserName><![CDATA[{}]]></ToUserName>
-    <FromUserName><![CDATA[{}]]></FromUserName>
-    <CreateTime>12345678</CreateTime>
-    <MsgType><![CDATA[text]]></MsgType>
-    <Content><![CDATA[{}]]></Content></xml>
-    '''.format(mydict['FromUserName'],mydict['ToUserName'],helpinfo)
-        return myxml
     elif d.startswith('b '):
-        userid = mydict['FromUserName']
-        connection = MySQLdb.connect(host=MYSQL_HOST_M, port=MYSQL_PORT, user=MYSQL_USER, passwd=MYSQL_PASS)
-        connection.select_db('user_table')
-        cursor = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+        userid = recv_con['FromUserName']
+        connection = MySQLdb.connect(host=MYSQL_HOST_M, port=MYSQL_PORT, \
+        	                         user=MYSQL_USER, passwd=MYSQL_PASS)
+        cursor = connection.cursor()
         cursor.execute('SELECT * FROM user_table')
+        results = cursor.fetchall()
         valid_user = False
         for row in results:
             if row[3] == userid:
@@ -93,11 +75,21 @@ def lib():
             del content_list[0]
             connection.select_db('book_table')
             for book_name in content_list
-                cursor.execute('''INSERT INTO boot_table(datetime, bookname, username)
+                cursor.execute('''INSERT INTO book_table(datetime, bookname, username)
                                   VALUES (CURRENT_TIMESTAMP, '%s', '%s')''' % (book_name, user_name)
+            connection.commit()
+            cursor.close()
+            connection.close()
             reply_content = "您的图书已添加成功！"
         elif
-            reply_content = "请输入你的用户名！"
-
+            reply_content = "请输入您的用户名！"
+        replt_xml = '''\
+    <xml>
+    <ToUserName><![CDATA[{}]]></ToUserName>
+    <FromUserName><![CDATA[{}]]></FromUserName>
+    <CreateTime>12345678</CreateTime>
+    <MsgType><![CDATA[text]]></MsgType>
+    <Content><![CDATA[{}]]></Content></xml>
+    '''.format(mydict['FromUserName'],mydict['ToUserName'],reply_content)
     else:
         return None
