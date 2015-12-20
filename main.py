@@ -19,13 +19,13 @@ MYSQL_PORT=int(sae.const.MYSQL_PORT)
 
 app=Bottle()
 
-@app.route('/weixin', method=['GET'])
+@app.route('/', method=['GET'])
 def check_signature():
     signature=request.GET.get('signature',None)
     timestamp=request.GET.get('timestamp',None)
     nonce=request.GET.get('nonce',None)
     echostr=request.GET.get('echostr',None)
-    token='******'
+    token='shuyou'
     tmplist=[token,timestamp,nonce]
     tmplist.sort()
     tmpstr=''.join(tmplist)
@@ -35,8 +35,8 @@ def check_signature():
     else:
         return None
 
-@app.route('/weixin',method='POST')
-def mydiary():
+@app.route('/w',method='POST')
+def lib():
     data=request.body.read()
     root=ET.fromstring(data)
     mydict={child.tag:child.text for child in root}
