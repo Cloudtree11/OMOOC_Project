@@ -35,7 +35,7 @@ def check_signature():
     else:
         return None
 
-@app.route('/w',method='POST')
+@app.route('/',method='POST')
 def lib():
     data=request.body.read()
     root=ET.fromstring(data)
