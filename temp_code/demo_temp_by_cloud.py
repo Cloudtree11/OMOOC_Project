@@ -60,11 +60,23 @@ def lib():
         return myxml
     elif d.startswith('b '):
         userid = recv_con['FromUserName']
-        connection = MySQLdb.connect(host=MYSQL_HOST_M, port=MYSQL_PORT, \
-        	                         user=MYSQL_USER, passwd=MYSQL_PASS)
-        cursor = connection.cursor()
-        cursor.execute('SELECT * FROM user_table')
-        results = cursor.fetchall()
+
+        try:
+            connection = MySQLdb.connect(host=MYSQL_HOST_M, port=MYSQL_PORT, \
+        	                             user=MYSQL_USER, passwd=MYSQL_PASS, db="user_table")
+            cursor = connection.cursor()
+            cursor.execute('SELECT * FROM user_table')
+            results = cursor.fetchall()
+        except MySQLdb.Error, e:
+            print "Error %d: %s" % (e.args[0],e.args[1])
+            # reply_content = "系统服务器出错！"
+            return None # 此处应该给用户提示
+        finally:
+        	if cursor:
+        	    cursor.close()
+            if connection:
+                connection.close()
+
         valid_user = False
         for row in results:
             if row[3] == userid:
@@ -73,17 +85,28 @@ def lib():
         if valid_user
             content_list = mydict['Content'].split(' ')
             del content_list[0]
-            connection.select_db('book_table')
-            for book_name in content_list
-                cursor.execute('''INSERT INTO book_table(datetime, bookname, username)
-                                  VALUES (CURRENT_TIMESTAMP, '%s', '%s')''' % (book_name, user_name)
-            connection.commit()
-            cursor.close()
-            connection.close()
-            reply_content = "您的图书已添加成功！"
+
+            try:
+                connection = MySQLdb.connect(host=MYSQL_HOST_M, port=MYSQL_PORT, \
+        	                                 user=MYSQL_USER, passwd=MYSQL_PASS, db="book_table")
+                for book_name in content_list
+                    cursor.execute('''INSERT INTO book_table(datetime, bookname, username)
+                                      VALUES (CURRENT_TIMESTAMP, '%s', '%s')''' % (book_name, user_name)
+                connection.commit()
+                reply_content = "您的图书已添加成功！"
+            except MySQLdb.Error, e:
+                print "Error %d: %s" % (e.args[0],e.args[1])
+                # reply_content = "系统服务器出错！"
+                return None # 此处应该给用户提示
+            finally:
+        	    if cursor:
+        	        cursor.close()
+                if connection:
+                    connection.close()
+
         elif
             reply_content = "请输入您的用户名！"
-        replt_xml = '''\
+        reply_xml = '''\
     <xml>
     <ToUserName><![CDATA[{}]]></ToUserName>
     <FromUserName><![CDATA[{}]]></FromUserName>
@@ -91,5 +114,6 @@ def lib():
     <MsgType><![CDATA[text]]></MsgType>
     <Content><![CDATA[{}]]></Content></xml>
     '''.format(mydict['FromUserName'],mydict['ToUserName'],reply_content)
+        return reply_xml
     else:
         return None
