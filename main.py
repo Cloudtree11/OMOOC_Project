@@ -36,37 +36,69 @@ def check_signature():
         return None
 
 @app.route('/',method='POST')
-def lib():
+def index():
     data=request.body.read()
     root=ET.fromstring(data)
-    mydict={child.tag:child.text for child in root}
-    d=mydict['Content']
-    if d.startswith('d '):
-        connection=MySQLdb.connection(host=MYSQL_HOST_M, port=MYSQL_PORT, user=MYSQL_USER, passwd=MYSQL_PASS)
-        connection.select_db(MYSQL_DB)
-        sql_insert="""insert into MYSQL_diary(datetime, content) VALUES (CURRENT_TIMESTAMP,'"""+d[2:]+"""')"""
-        connection.query(sql_insert)
-    elif d in ['l','list']:
-        connection=MySQLdb.connection(host=MYSQL_HOST_M, port=MYSQL_PORT, user=MYSQL_USER, passwd=MYSQL_PASS)
-        connection.select_db(MYSQL_DB)
-        cursor=connection.cursor()
-        cursor.execute('SELECT * FROM MYSQL_diary')
-        rows=[item[2] for item in cursor.fetchall()]
-        data=''.join(rows)
+    recv_con = {child.tag:child.text for child in root}
+    d = recv_con['Content']
+    ret_msg = 'error'
+
+    if d.startswith('u '):
+        row = None
+
+        try:
+            userid=recv_con['FromUserName']
+            connection=MySQLdb.connect(host=MYSQL_HOST_M, port=MYSQL_PORT, \
+                                       user=MYSQL_USER, passwd=MYSQL_PASS, \
+                                       charset="utf8")
+            connection.select_db(MYSQL_DB)
+
+            cur = connection.cursor()
+            sql_select="""SELECT * FROM user_table WHERE openid='"""+userid+"""'"""
+            cur.execute(sql_select)
+            row = cur.fetchone()
+
+        except Exception, e:
+            ret_msg = 'error: open_mysql_error' + e.__class__.__doc__
+            myxml = '''\
+            <xml>
+            <ToUserName><![CDATA[{}]]></ToUserName>
+            <FromUserName><![CDATA[{}]]></FromUserName>
+            <CreateTime>12345678</CreateTime>
+            <MsgType><![CDATA[text]]></MsgType>
+            <Content><![CDATA[{}]]></Content></xml>
+            '''.format(recv_con['FromUserName'],recv_con['ToUserName'], ret_msg)
+            return myxml
+
+
+        if row is None:
+            try:
+                sql_insert="""insert into user_table(datetime, username, openid) VALUES (CURRENT_TIMESTAMP,'"""+d[2:]+"""','"""+userid+"""')"""
+                cur.execute(sql_insert)
+
+                connection.close()
+
+                ret_msg = 'insert_success! '
+            except Exception, e:
+                ret_msg = 'error: insert_error:' + e.__class__.__doc__
+        else:
+            ret_msg = '您已添加过用户名!'
+
         myxml = '''\
-    <xml>
-    <ToUserName><![CDATA[{}]]></ToUserName>
-    <FromUserName><![CDATA[{}]]></FromUserName>
-    <CreateTime>12345678</CreateTime>
-    <MsgType><![CDATA[text]]></MsgType>
-    <Content><![CDATA[{}]]></Content></xml>
-    '''.format(mydict['FromUserName'],mydict['ToUserName'],data)
+        <xml>
+        <ToUserName><![CDATA[{}]]></ToUserName>
+        <FromUserName><![CDATA[{}]]></FromUserName>
+        <CreateTime>12345678</CreateTime>
+        <MsgType><![CDATA[text]]></MsgType>
+        <Content><![CDATA[{}]]></Content></xml>
+        '''.format(recv_con['FromUserName'],recv_con['ToUserName'], ret_msg)
         return myxml
+
     elif d in ['?', 'h', 'help']:
-        helpinfo='''usage:
-        d+space write and save
-        ?|h|help help info.
-        l|list reload all historic msg
+        helpinfo='''使用信息:
+        u+空格+用户名 记录用户名
+        b+空格+书名 记录书名
+        ?|h|help 获取使用信息
         '''
         myxml = '''\
     <xml>
@@ -75,7 +107,7 @@ def lib():
     <CreateTime>12345678</CreateTime>
     <MsgType><![CDATA[text]]></MsgType>
     <Content><![CDATA[{}]]></Content></xml>
-    '''.format(mydict['FromUserName'],mydict['ToUserName'],helpinfo)
+    '''.format(recv_con['FromUserName'],recv_con['ToUserName'],helpinfo)
         return myxml
     else:
         return None
