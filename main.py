@@ -93,10 +93,53 @@ def index():
         <Content><![CDATA[{}]]></Content></xml>
         '''.format(recv_con['FromUserName'],recv_con['ToUserName'], ret_msg)
         return myxml
+        
+    elif d in ['qu']:
+        try:
+            connection=MySQLdb.connect(host=MYSQL_HOST_M, port=MYSQL_PORT, \
+                                       user=MYSQL_USER, passwd=MYSQL_PASS, \
+                                       charset="utf8")
+            connection.select_db(MYSQL_DB)
 
+            cur = connection.cursor()
+
+            sql_select = """SELECT * FROM user_table"""
+            cur.execute(sql_select)
+
+            ret_msg = ''
+            for record in cur.fetchall():
+                u=record[2].encode("utf-8")
+                ret_msg = ret_msg + u + '\n'
+        except Exception, e:
+            ret_msg = 'error: insert_error:' + e.__class__.__doc__
+
+        try:
+            myxml = '''\
+            <xml>
+            <ToUserName><![CDATA[{}]]></ToUserName>
+            <FromUserName><![CDATA[{}]]></FromUserName>
+            <CreateTime>12345678</CreateTime>
+            <MsgType><![CDATA[text]]></MsgType>
+            <Content><![CDATA[{}]]></Content></xml>
+            '''.format(recv_con['FromUserName'],recv_con['ToUserName'], ret_msg)
+            return myxml
+        except Exception, e:
+            ret_msg = ret_msg + e.__class__.__doc__
+
+            myxml = '''\
+            <xml>
+            <ToUserName><![CDATA[{}]]></ToUserName>
+            <FromUserName><![CDATA[{}]]></FromUserName>
+            <CreateTime>12345678</CreateTime>
+            <MsgType><![CDATA[text]]></MsgType>
+            <Content><![CDATA[{}]]></Content></xml>
+            '''.format(recv_con['FromUserName'],recv_con['ToUserName'], ret_msg)
+            return myxml
+                                      
     elif d in ['?', 'h', 'help']:
         helpinfo='''使用信息:
         u+空格+用户名 记录用户名
+        qu 查询所有用户
         b+空格+书名 记录书名
         ?|h|help 获取使用信息
         '''
